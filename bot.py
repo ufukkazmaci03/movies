@@ -23,6 +23,37 @@ async def start(ctx):
         manager.add_user(user_id, ctx.author.name)
         await ctx.send("""Merhaba! Hoş geldiniz! Başarılı bir şekilde kaydoldunuz! Her dakika yeni resimler alacaksınız ve bunları elde etme şansınız olacak! Bunu yapmak için “Al!” butonuna tıklamanız gerekiyor! Sadece “Al!” butonuna tıklayan ilk üç kullanıcı resmi alacaktır! =)""")
 
+
+@bot.command()
+async def rating(ctx):
+    res = manager.get_rating()
+    res = [f'| @{x[0]:<11} | {x[1]:<11}|\n{"_"*26}' for x in res]
+    res = '\n'.join(res)
+    res = f'|USER_NAME    |COUNT_PRIZE|\n{"_"*26}\n' + res
+    await ctx.send(f"```\n{res}\n```")
+
+@bot.event
+async def on_interaction(interaction):
+    if interaction.type == discord.InteractionType.component:
+        custom_id = interaction.data['custom_id']
+        user_id = interaction.user.id
+
+        if manager.get_winners_count(custom_id) < 3:
+            res = manager.add_winner(user_id, custom_id)
+            if res:
+                img = manager.get_prize_img(custom_id)
+                with open(f'img/{img}', 'rb') as photo:
+                    file = discord.File(photo)
+                    await interaction.response.send_message(file=file, content="Tebrikler, resmi aldınız!")
+            else:
+                await interaction.response.send_message(content="Bu resme zaten sahipsiniz!", ephemeral=True)
+        else:
+            await interaction.response.send_message(content="Maalesef, birisi bu resmi çoktan aldı...", ephemeral=True)
+
+    
+
+
+
 # Resim göndermek için zamanlanmış bir görev
 @tasks.loop(minutes=1)
 async def send_message():
